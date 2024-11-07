@@ -3,25 +3,23 @@ import pandas as pd
 import numpy as np
 import SqlOperations
 
+'''
 
-def shiftColumns( list, firstColumnId=0, secondColumnId=1 ):
+TODO: 
 
-    for row in list:
+File reader object, which automaticly uses newest files avalible, or can choose them manualy via gui.
 
-        tmp = row[ firstColumnId ]
+Simple gui for files
 
-        row[ firstColumnId ] = row[ secondColumnId ]
+Viewing tables or views contents with gui 
 
-        row[ secondColumnId ] = tmp
+Improve readbility of code
 
-    return list
+Add comments
 
+'''
 
-def clone( list ):
-
-    list_copy = list[:]
-
-    return list_copy
+def clone( list ): return list[:]
 
 
 def transformCSVtoSqliteFormat( columnList, mainList ):
@@ -172,6 +170,16 @@ CREATE TABLE IF NOT EXISTS "Nodes_voltage_changes"(
     FOREIGN KEY (node) REFERENCES Nodes(name)
 );
 
+COMMIT;
+
+BEGIN;
+
+UPDATE Nodes SET in_model = False;
+
+UPDATE Generators SET in_model = False;
+
+UPDATE Transformers SET in_model = False;
+
 COMMIT;'''
 
             database.executeScript( query )
@@ -179,66 +187,47 @@ COMMIT;'''
             query = '''Generators(name,min_active_power,current_active_power,max_active_power,min_reactive_power,current_reactive_power,max_reactive_power,in_model ) 
 VALUES (?, ?, ?, ?, ?, ?, ?,True);'''
             
-            generators = pd.read_csv('plans\\files\\results\\2024-11-05--11-46-41--generators.csv').to_numpy().tolist()
+            generators = pd.read_csv('plans\\files\\results\\2024-11-07--10-13-04--generators.csv').to_numpy().tolist()
 
-            nodesGenerators = shiftColumns( np.delete( clone( generators ), (1, 2, 3, 4, 5, 6), axis=1 ) )
+            nodesGenerators = np.delete( clone( generators ), (1, 2, 3, 4, 5, 6), axis=1 )
 
             database.insertOrReplaceInto( query, generators, True )
 
-            transformers = pd.read_csv('plans\\files\\results\\2024-11-05--11-46-41--transformers.csv').to_numpy().tolist()
+            transformers = pd.read_csv('plans\\files\\results\\2024-11-07--10-13-04--transformers.csv').to_numpy().tolist()
 
-            nodesTransformers = shiftColumns( np.delete( clone( transformers ), (1, 2, 3, 4), axis=1 ) )
+            nodesTransformers = np.delete( clone( transformers ), (1, 2, 3, 4), axis=1 )
 
             query = 'Transformers(name, min_tap, current_tap, max_tap, regulation_step, in_model ) VALUES (?, ?, ?, ?, ?, True);'
 
             database.insertOrReplaceInto( query, transformers, True )
 
-            nodes = pd.read_csv('plans\\files\\results\\2024-11-05--11-46-41--nodes.csv').to_numpy().tolist()
+            nodes = pd.read_csv('plans\\files\\results\\2024-11-07--10-13-04--nodes.csv').to_numpy().tolist()
 
             query = 'Nodes(name, min_voltage, current_voltage, max_voltage, in_model ) VALUES (?, ?, ?, ?, True);'
 
             database.insertOrReplaceInto( query, nodes )
 
-            query = 'Nodes_generators( node, generator ) VALUES (?, ?);'
+            query = 'Nodes_generators( generator, node ) VALUES (?, ?);'
 
             database.insertOrReplaceInto( query, nodesGenerators )
 
-            query = 'Nodes_transformers( node, transformer ) VALUES (?, ?);'
+            query = 'Nodes_transformers( transformer, node ) VALUES (?, ?);'
 
             database.insertOrReplaceInto( query, nodesTransformers )
 
-            baseNodesVoltageChanges = pd.read_csv('plans\\files\\results\\2024-11-05--11-46-42--v.csv')
+            baseNodesVoltageChanges = pd.read_csv('plans\\files\\results\\2024-11-07--10-13-18--v.csv')
 
             nodesVoltageChangesColumns = baseNodesVoltageChanges.columns.tolist()[2:]
 
             nodesVoltageChanges = baseNodesVoltageChanges.to_numpy()
 
-            readyNVC = transformCSVtoSqliteFormat( nodesVoltageChangesColumns, nodesVoltageChanges )
-            '''
-            for i in range( len( nodesVoltageChangesColumns ) ):
-
-                for row in nodesVoltageChanges:
-
-                    tmpList.append( nodesVoltageChangesColumns[ i ] )
-
-                    for j in range( len( row ) ):
-                        
-                        if ( j < 2 or  ( i + 2 ) == j ): 
-
-                            tmpList.append( row[ j ] )
-
-                    readyNVC.append( tmpList )
-
-                    tmpList = []
-        
-            readyNVC = shiftColumns( readyNVC, -2, -1 )
-
-            '''
+            formatedNVC = transformCSVtoSqliteFormat( nodesVoltageChangesColumns, nodesVoltageChanges )
+          
             query = 'Nodes_voltage_changes( node, changed_element, changed_element_difference, node_voltage_difference ) VALUES ( ?, ?, ?, ? );'
 
-            database.insertOrReplaceInto( query, readyNVC )
+            database.insertOrReplaceInto( query, formatedNVC )
 
-            baseElementsReactivePowerChanges = pd.read_csv('plans\\files\\results\\2024-11-05--11-46-42--q.csv')
+            baseElementsReactivePowerChanges = pd.read_csv('plans\\files\\results\\2024-11-07--10-13-18--q.csv')
 
             elementsReactivePowerChangesColumns = baseElementsReactivePowerChanges.columns.tolist()[2:]
 
@@ -250,19 +239,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?,True);'''
 VALUES( ?,?,?,? );'''
 
             database.insertOrReplaceInto( query, formatedERPC )
-        '''
-             [id] INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-
-    [base_element] NVARCHAR(16) NOT NULL,
-
-    [base_element_reactive_power_difference] REAL NOT NULL,
-
-    [changed_element] NVARCHAR(16) NOT NULL,
-
-    [changed_element_difference] REAL NOT NULL
-
-    ''' 
-
+       
     except sqlite3.Error as error:
 
         print( error )
