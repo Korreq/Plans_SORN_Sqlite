@@ -1,5 +1,5 @@
 //BEFORE RUNNING MAKE SURE TO CHANGE configurationFileLocation VARIABLE TO LOCATION OF THE CONFIGURATION FILE
-var configurationFileLocation = "C:\\Users\\lukas\\Documents\\Github\\Plans_SORN_Sqlite\\plans\\files\\";
+var configurationFileLocation = "Z:\\home\\yoga\\Documents\\Github\\Plans_SORN_Sqlite\\plans\\files";
 
 /*  
   Description:
@@ -76,9 +76,11 @@ var inputFile = readFile( config, fso );
 var inputArray = getInputArray( inputFile );
 inputFile.close();
 
-var nodesFile = createFile( "nodes", config, fso );
+//Create result files and folder using settings from a config file
+var resultFiles = [ createFile( "nodes", config, fso ), createFile( "generators", config, fso ), 
+createFile( "transformers", config, fso ), createFile( "q", config, fso ), createFile( "v", config, fso ) ];
 
-nodesFile.WriteLine( "name,min_voltage,current_voltage,max_voltage" );
+resultFiles[ 0 ].WriteLine( "name,min_voltage,current_voltage,max_voltage" );
 
 //Fill node and baseNodesVolt arrays with nodes that matches names from input array
 for( var i = 1; i < Data.N_Nod; i++ ){
@@ -98,8 +100,8 @@ for( var i = 1; i < Data.N_Nod; i++ ){
 
     node.Vn >= config.minRatedVoltage && isStringMatchingRegexArray( strip( node.Name ), inputArray ) 
   ){ 
-     
-    nodesFile.WriteLine( strip( node.Name ) + "," + roundTo( node.Vmin, config.roundingPrecision ) + "," + 
+   
+    resultFiles[ 0 ].WriteLine( strip( node.Name ) + "," + roundTo( node.Vmin, config.roundingPrecision ) + "," + 
     roundTo( node.Vi, config.roundingPrecision ) + "," + roundTo( node.Vmax, config.roundingPrecision ) );
 
     nodes.push( node );
@@ -109,11 +111,9 @@ for( var i = 1; i < Data.N_Nod; i++ ){
 
 }
 
-nodesFile.close();
+resultFiles[ 0 ].close();
 
-var generatorsFile = createFile( "generators", config, fso );
-
-generatorsFile.WriteLine( "name,min_active_power,current_active_power,max_active_power,min_reactive_power,current_reactive_power,max_reactive_power,connected_node" );
+resultFiles[ 1 ].WriteLine( "name,min_active_power,current_active_power,max_active_power,min_reactive_power,current_reactive_power,max_reactive_power,connected_node" );
 
 //Fill elements array with valid generators and connected nodes. 
 //Also fills baseElementsReactPow with generators reactive power and baseElementsNodesPow with connected nodes power
@@ -140,8 +140,8 @@ for( var i = 1; i < Data.N_Gen; i++ ){
 
     isStringMatchingRegexArray( strip( node.Name ), inputArray ) 
   ){   
-
-    generatorsFile.WriteLine( strip( element.Name ) + "," + roundTo( element.Pmin, config.roundingPrecision ) + "," + 
+ 
+    resultFiles[ 1 ].WriteLine( strip( element.Name ) + "," + roundTo( element.Pmin, config.roundingPrecision ) + "," + 
     roundTo( element.Pg, config.roundingPrecision ) + "," + roundTo( element.Pmax, config.roundingPrecision ) + "," + 
     roundTo( element.Qmin, config.roundingPrecision ) + "," + roundTo( element.Qg, config.roundingPrecision ) + "," + 
     roundTo( element.Qmax, config.roundingPrecision ) + "," + strip( node.Name ) );
@@ -153,11 +153,9 @@ for( var i = 1; i < Data.N_Gen; i++ ){
    
 }
 
-generatorsFile.close();
+resultFiles[ 1 ].close();
 
-var transformersFile = createFile( "transformers", config, fso )
-
-transformersFile.WriteLine( "name,min_tap,current_tap,max_tap, regulation_step, connected_node" ); 
+resultFiles[ 2 ].WriteLine( "name,min_tap,current_tap,max_tap, regulation_step, connected_node" ); 
 
 //Add valid transformers to arrays with coresponding node and branch. Constrains:
 //Transformer must be connected to node from nodes array, have more than 1 tap, not already in elements array
@@ -182,8 +180,11 @@ for( i in nodes ){
       if( transformer.TapLoc === 1 ){ minTap = 1, maxTap = transformer.Lstp; }
 
       else{ minTap = transformer.Lstp, maxTap = 1 }
-      
+      /*
       transformersFile.WriteLine( strip( transformer.name ) + "," + minTap + "," + transformer.Stp0 + "," + maxTap + "," + 
+      roundTo( transformer.dUstp, config.roundingPrecision ) + "," + node.Name );
+      */
+      resultFiles[ 2 ].WriteLine( strip( transformer.name ) + "," + minTap + "," + transformer.Stp0 + "," + maxTap + "," + 
       roundTo( transformer.dUstp, config.roundingPrecision ) + "," + node.Name );
 
       branch = BraArray.Find( transformer.Name );
@@ -199,19 +200,17 @@ for( i in nodes ){
 
 }
 
-transformersFile.close();
-
-//Create result files and folder using settings from a config file
-var files = [ createFile( "q", config, fso ), createFile( "v", config, fso ) ];
+//transformersFile.close();
+resultFiles[ 2 ].close();
 
 //Write headers and base values for each element/node to coresponding file 
-for( var i = 0; i < files.length; i++ ) files[ i ].Write( "Elements,U_G/Tap Difference," );
+for( var i = 3; i < resultFiles.length; i++ ) resultFiles[ i ].Write( "Elements,U_G/Tap Difference," );
 
 //Writes for each element it's node react power 
-writeDataToFile( config, files[ 0 ], elements, baseElementsReactPow );
+writeDataToFile( config, resultFiles[ 3 ], elements, baseElementsReactPow );
 
 //Writes for each element it's node voltage
-writeDataToFile( config, files[ 1 ], nodes, baseNodesVolt );
+writeDataToFile( config, resultFiles[ 4 ], nodes, baseNodesVolt );
 
 //Trying to save file before any change on transformers and connected nodes
 if( SaveTempBIN( tmpFile ) < 1 ) errorThrower( "Unable to create temporary file" );
@@ -243,12 +242,10 @@ for( i in elements ){
 
   var difference = ( elements[ i ][ 2 ] ) ? element.Stp0 - elementBaseValue : roundTo( node.Vs - elementBaseValue, config.roundingPrecision );
   
-  for( var j = 0; j < files.length; j++ ){
+  for( var j = 3; j < resultFiles.length; j++ ){
 
     //Write element's name, it's difference of connected node power / tap number to base
-    if( elements[ i ][ 2 ] ) files[ j ].Write( strip( element.Name )  + "," + difference + "," );
-  
-    else files[ j ].Write( strip( element.Name ) + "," + difference + "," );
+    resultFiles[ j ].Write( strip( element.Name ) + "," + difference + "," );
   }
 
   //Write for each element it's new reactive power
@@ -262,21 +259,21 @@ for( i in elements ){
 
     else react = elements[ j ][ 0 ].Qg;
   
-    files[ 0 ].Write( roundTo( react - baseElementsReactPow[ j ], config.roundingPrecision ) + "" );
+    resultFiles[ 3 ].Write( roundTo( react - baseElementsReactPow[ j ], config.roundingPrecision ) + "" );
     
-    if( j != elements.length - 1 ) files[ 0 ].Write( "," );
+    if( j != elements.length - 1 ) resultFiles[ 3 ].Write( "," );
   }
   
   //Write for each node it's new voltage
   for( j in nodes ){ 
   
-    files[ 1 ].Write( roundTo( nodes[ j ].Vi - baseNodesVolt[ j ], config.roundingPrecision ) + "" ); 
+    resultFiles[ 4 ].Write( roundTo( nodes[ j ].Vi - baseNodesVolt[ j ], config.roundingPrecision ) + "" ); 
   
-    if(j != nodes.length - 1) files[ 1 ].Write( "," );  
+    if(j != nodes.length - 1) resultFiles[ 4 ].Write( "," );  
   }
 
   //Add end line character to each file
-  if( i != elements.length - 1 ) for( var j = 0; j < files.length; j++ ) files[ j ].WriteLine("");
+  if( i != elements.length - 1 ) for( var j = 3; j < resultFiles.length; j++ ) resultFiles[ j ].WriteLine("");
 
   //Load model without any changes to transformators
   ReadTempBIN( tmpFile );
@@ -290,7 +287,7 @@ fso.DeleteFile( tmpFile );
 fso.DeleteFile( tmpOgFile );
 
 //Closing result files
-for( var i = 0; i < files.length; i++ ) files[ i ].Close();
+for( var i = 3; i < resultFiles.length; i++ ) resultFiles[ i ].Close();
 
 //Gets program working duration and shows it in a message box
 //Working duration dosen't work if program starts and ends in a different day due to lack of futher date checking 

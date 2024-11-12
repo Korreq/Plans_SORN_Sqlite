@@ -162,7 +162,7 @@ cython_debug/
 #.idea/
 
 # database with confidential data
-SORNDatabase.db
+SORNDatabase*
 
 # csv files with confidential data
 results/
