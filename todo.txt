@@ -1,0 +1,7 @@
+Add new file for ODM areas in .jsp file
+
+Convet 1 to 1 csv v and q files to database
+
+Reduce as much as possible operations in .jsp file
+
+Change writitng method for v and q file to writeOnce method ( Test on full model )

@@ -197,7 +197,6 @@ for( i in nodes ){
 
 }
 
-//transformersFile.close();
 resultFiles[ 2 ].close();
 
 //Write headers and base values for each element/node to coresponding file 
@@ -244,10 +243,6 @@ for( i in elements ){
 
     difference = roundTo( node.Vs - elementBaseValue, config.roundingPrecision );
   }
-  //Calculate power flow, if fails try to load original model and throw error 
-  //if( CalcLF() != 1 ) safeErrorThrower( "Power Flow calculation failed", tmpOgFile );
-
-  //var difference = ( elements[ i ][ 2 ] ) ? element.Stp0 - elementBaseValue : roundTo( node.Vs - elementBaseValue, config.roundingPrecision );
   
   for( var j = 3; j < resultFiles.length; j++ ){
 
@@ -271,12 +266,12 @@ for( i in elements ){
     if( j != elements.length - 1 ) resultFiles[ 3 ].Write( "," );
   }
   
-  //Write for each node it's new voltage
+  //Write for each node write it's new voltage
   for( j in nodes ){ 
   
     resultFiles[ 4 ].Write( roundTo( nodes[ j ].Vi - baseNodesVolt[ j ], config.roundingPrecision ) + "" ); 
   
-    if(j != nodes.length - 1) resultFiles[ 4 ].Write( "," );  
+    if( j != nodes.length - 1 ) resultFiles[ 4 ].Write( "," );  
   }
 
   //Add end line character to each file
@@ -541,7 +536,7 @@ function getInputArray( file ){
 
   var array = [], tmp = [], word; 
 
-  while(!file.AtEndOfStream){
+  while( !file.AtEndOfStream ){
    
     tmp = file.ReadLine().split(",");
 
