@@ -32,36 +32,13 @@ def transformCSVtoSqliteFormat(columnList, mainList):
         
         for row in mainList: 
             
-            tmpList = [col] + [ str( val ) for val in row[:2] ] + ( [ str(row[ i + 2 ] ) ] if i + 2 < len( row ) else [] )
+            tmpList = [ col ] + [ str( val ) for val in row[ :2 ] ] + ( [ str(row[ i + 2 ] ) ] if i + 2 < len( row ) else [] )
             
             formatedList.append(tmpList) 
     
     return formatedList
 
 
-'''
-def transformCSVtoSqliteFormat( columnList, mainList ):
-        
-    tmpList, formatedList = [], []
-
-    for i in range( len( columnList ) ):
-
-        for row in mainList:
-
-            tmpList.append( columnList[ i ] )
-
-            for j in range( len( row ) ):
-                        
-                if ( j < 2 or  ( i + 2 ) == j ): 
-
-                    tmpList.append( row[ j ] )
-
-            formatedList.append( tmpList )
-
-            tmpList = []
-        
-    return formatedList
-'''
 def loadFiles():
 
     fileList = list( fd.askopenfilenames(parent=tk.Tk(), title='Choose 5 corresponding files') )
@@ -77,11 +54,8 @@ def loadFiles():
    
 def main():
   
-    
     #0 - generators, 1 - nodes, 2 - q, 3 - transformers, 4 - v
     fileList = loadFiles()
-
-    print( fileList )
 
     try: 
 

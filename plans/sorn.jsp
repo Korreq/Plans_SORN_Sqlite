@@ -63,7 +63,7 @@ var time = getTime();
 
 var nodes = [], elements = [], baseElementsReactPow = [], baseNodesVolt = [];
 
-var node = element = transformer = branch = react = elementBaseValue = null;
+var node = element = transformer = branch = react = elementBaseValue = difference = null;
 
 //Setting power flow calculation settings with settings from config file
 setPowerFlowSettings( config );
@@ -180,10 +180,7 @@ for( i in nodes ){
       if( transformer.TapLoc === 1 ){ minTap = 1, maxTap = transformer.Lstp; }
 
       else{ minTap = transformer.Lstp, maxTap = 1 }
-      /*
-      transformersFile.WriteLine( strip( transformer.name ) + "," + minTap + "," + transformer.Stp0 + "," + maxTap + "," + 
-      roundTo( transformer.dUstp, config.roundingPrecision ) + "," + node.Name );
-      */
+     
       resultFiles[ 2 ].WriteLine( strip( transformer.name ) + "," + minTap + "," + transformer.Stp0 + "," + maxTap + "," + 
       roundTo( transformer.dUstp, config.roundingPrecision ) + "," + node.Name );
 
@@ -206,11 +203,11 @@ resultFiles[ 2 ].close();
 //Write headers and base values for each element/node to coresponding file 
 for( var i = 3; i < resultFiles.length; i++ ) resultFiles[ i ].Write( "Elements,U_G/Tap Difference," );
 
-//Writes for each element it's node react power 
-writeDataToFile( config, resultFiles[ 3 ], elements, baseElementsReactPow );
+//Writes each element 
+writeDataToFile( resultFiles[ 3 ], elements );
 
-//Writes for each element it's node voltage
-writeDataToFile( config, resultFiles[ 4 ], nodes, baseNodesVolt );
+//Writes each element
+writeDataToFile( resultFiles[ 4 ], nodes );
 
 //Trying to save file before any change on transformers and connected nodes
 if( SaveTempBIN( tmpFile ) < 1 ) errorThrower( "Unable to create temporary file" );
@@ -228,6 +225,11 @@ for( i in elements ){
     if( ( element.TapLoc === 1 && element.Stp0 < element.Lstp ) || ( element.TapLoc === 0 && element.Stp0 <= 1 ) ) element.Stp0++;
     
     else element.Stp0--;  
+
+    //Calculate power flow, if fails try to load original model and throw error 
+    sCPF( tmpOgFile );
+
+    difference = element.Stp0 - elementBaseValue;
   }
 
   //get set value from config file and add it to node's voltage  
@@ -236,11 +238,16 @@ for( i in elements ){
     elementBaseValue = roundTo( node.Vs , config.roundingPrecision );
     
     node.Vs += config.changeValue;
+
+    //Calculate power flow, if fails try to load original model and throw error 
+    sCPF( tmpOgFile );
+
+    difference = roundTo( node.Vs - elementBaseValue, config.roundingPrecision );
   }
   //Calculate power flow, if fails try to load original model and throw error 
-  if( CalcLF() != 1 ) safeErrorThrower( "Power Flow calculation failed", tmpOgFile );
+  //if( CalcLF() != 1 ) safeErrorThrower( "Power Flow calculation failed", tmpOgFile );
 
-  var difference = ( elements[ i ][ 2 ] ) ? element.Stp0 - elementBaseValue : roundTo( node.Vs - elementBaseValue, config.roundingPrecision );
+  //var difference = ( elements[ i ][ 2 ] ) ? element.Stp0 - elementBaseValue : roundTo( node.Vs - elementBaseValue, config.roundingPrecision );
   
   for( var j = 3; j < resultFiles.length; j++ ){
 
@@ -333,6 +340,11 @@ function CPF(){
   if( CalcLF() != 1 ) errorThrower( "Power Flow calculation failed" );
 }
 
+function sCPF( backupFile ){
+
+  if( CalcLF() != 1 ) safeErrorThrower( "Power Flow calculation failed", backupFile );
+}
+
 //Function takes string and returns it without whitespaces
 function strip( string ){
 
@@ -367,7 +379,7 @@ function isElementInArrayByName( array, elementName ){
 }
 
 //Function writes to specifed file objects names and corresponding data
-function writeDataToFile( config, file, objectArray, dataArray ){
+function writeDataToFile( file, objectArray ){
 
   for( i in objectArray ){
   

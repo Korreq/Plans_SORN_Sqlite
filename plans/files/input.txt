@@ -1,1 +1,1 @@
-ZRC, DUN, GBL, GDP, GDA
+[A-Z]
